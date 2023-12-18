@@ -4,6 +4,7 @@ import mediapipe as mp
 import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
+# Load pre-trained model from pickle file
 model_dict = pickle.load(open('./model.p', 'rb'))
 model = model_dict['model']
 
@@ -15,8 +16,9 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
+# Mapping of numeric labels to corresponding characters
 labels_dict = {0: 'A', 1: 'B', 2: 'C', 3:'D', 4:'E', 5:'F', 6:'G', 7:'H', 8:'I', 9:'K', 10:'L', 11:'M', 12:'N', 13:'O', 14:'O', 15:'Q',
-                   16:'R', 17:'S', 18:'T', 19:'U', 20:'U', 21:'V', 22:'W', 23:'X'}
+                   16:'R', 17:'S', 18:'T', 19:'U', 20:'U', 21:'V', 22:'W', 23:'X', 24:'Dr Alaa'}
 
 while True:
     data_aux = []
@@ -27,10 +29,12 @@ while True:
 
     H, W, _ = frame.shape
 
+    # Convert the frame to RGB format (required by MediaPipe Hands)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     results = hands.process(frame_rgb)
     if results.multi_hand_landmarks:
+        # Draw landmarks and connections on the frame
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
                 frame,
@@ -38,7 +42,8 @@ while True:
                 mp_hands.HAND_CONNECTIONS,
                 mp_drawing_styles.get_default_hand_landmarks_style(),
                 mp_drawing_styles.get_default_hand_connections_style())
-
+            
+        # Extract x and y coordinates of each hand landmark
         for hand_landmarks in results.multi_hand_landmarks:
             for i in range(len(hand_landmarks.landmark)):
                 x = hand_landmarks.landmark[i].x
@@ -53,8 +58,8 @@ while True:
                 data_aux.append(x - min(x_))
                 data_aux.append(y - min(y_))
 
-        # Padding
-        max_length = 84  # Change this to the actual length used during training
+        # Pad and reshape hand landmark data for model input
+        max_length = 84 
         data_aux_padded = pad_sequences([data_aux], maxlen=max_length, padding='post', dtype='float32')[0]
 
         x1 = int(min(x_) * W) - 10
@@ -67,6 +72,7 @@ while True:
 
         predicted_character = labels_dict[int(prediction[0])]
 
+        # Draw bounding box and predicted character on the frame
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
         cv2.putText(frame, predicted_character, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3,
                     cv2.LINE_AA)
